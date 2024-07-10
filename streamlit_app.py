@@ -11,7 +11,6 @@ from openpyxl.styles import Alignment
 # Replacement dictionary for specific replacements in 'Any Level Sectors'
 replacement_dict_any_level_sectors = {
     'Renewables': 'Renewable Energy',
-    'Power': 'Conventional Energy',
     'Social & Defence': 'Social Infrastructure',
     'Telecoms': 'Digital Infrastructure',
     'Airports': 'Airport',
@@ -33,7 +32,6 @@ replacement_dict_any_level_sectors = {
     'Offshore Wind - Fixed': 'Wind (Offshore)',
     'Offshore Wind - Floating': 'Wind (Offshore)',
     'Onshore Wind': 'Wind (Onshore)',
-    'Other Power': 'Conventional Energy',
     'Other Renewables': 'Renewable Energy',
     'Other Telecoms': 'Digital Infrastructure',
     'Other Transport': 'Transport',
@@ -159,14 +157,6 @@ def autofit_columns(writer):
             adjusted_width = (max_length + 2)
             worksheet.column_dimensions[column].width = adjusted_width
 
-# Function to clean specific values
-def clean_specific_values(df):
-    for col in df.columns:
-        for idx, value in df[col].items():
-            if value in ["0", "nan", "n/a"]:
-                df.at[idx, col] = ""
-    return df
-
 # Function to create the destination file
 def create_destination_file(source_path):
     df1, df2 = read_source_file(source_path)
@@ -185,17 +175,27 @@ def create_destination_file(source_path):
             
             # Step 2: Replace 'Coal' with 'Mineral'
             cell_value = cell_value.replace('Coal', 'Mineral')
-            
+
+            # Step 5: Replace 'Other Power' with 'OtherConventionalEnergy' as a temporary placeholder
+            cell_value = cell_value.replace('Other Power', 'OtherConventionalEnergy')
+
+            # Step 6: Replace 'Power' with 'Conventional Energy' only if it's not part of 'Coal-Fired Power'
+            cell_value = re.sub(r'\bPower\b', 'Conventional Energy', cell_value)
+
+            # Step 7: Replace the temporary placeholder 'OtherConventionalEnergy' back to 'Conventional Energy'
+            cell_value = cell_value.replace('OtherConventionalEnergy', 'Conventional Energy')
+
             # Step 3: Replace 'Xoal-Fired' with 'Coal-Fired Power'
             cell_value = cell_value.replace('Xoal-Fired', 'Coal-Fired Power')
-            
+
             # Step 4: Replace 'Biofuels' with 'Biofuels/Biomass'
             cell_value = cell_value.replace('Biofuels', 'Biofuels/Biomass')
-            
+
             # Replace 'Biomass' with 'Biofuels/Biomass' only if 'Biofuels/Biomass' is not already in the cell
             if 'Biofuels/Biomass' not in cell_value:
                 cell_value = cell_value.replace('Biomass', 'Biofuels/Biomass')
-            
+
+
         return cell_value
     
     # Apply word replacement to 'Any Level Sectors' column in the transaction_df
@@ -207,9 +207,6 @@ def create_destination_file(source_path):
     # Format date columns in transaction_df
     date_columns_transaction = ['Latest Transaction Event Date', 'Financial Close Date']
     transaction_df = format_date_columns(transaction_df, date_columns_transaction)
-    
-    # Clean cell contents
-    transaction_df = clean_specific_values(transaction_df)
     
     # Generate the destination filename with a timestamp
     base, ext = os.path.splitext(source_path)
@@ -309,9 +306,6 @@ def create_destination_file(source_path):
         # Remove duplicate rows
         full_events_df = full_events_df.drop_duplicates()
 
-        # Clean cell contents
-        full_events_df = clean_specific_values(full_events_df)
-
         full_events_df.to_excel(writer, sheet_name='Events', index=False)
 
         # Populate the Bidders Any tab
@@ -344,9 +338,6 @@ def create_destination_file(source_path):
         bidders_any_df = bidders_any_df.dropna(subset=['Role Type'])
         bidders_any_df = bidders_any_df[~bidders_any_df['Role Type'].str.contains('N/A|^$|Other')]
         
-        # Clean cell contents
-        bidders_any_df = clean_specific_values(bidders_any_df)
-
         # Arrange columns to match the required output for Bidders_Any tab
         bidders_any_columns = ['Transaction Upload ID', 'Role Type', 'Role Subtype', 'Company', 'Fund', 'Bidder Status', 'Client Counterparty', 'Client Company Name', 'Fund Name']
         bidders_any_df = bidders_any_df.reindex(columns=bidders_any_columns)
@@ -431,11 +422,13 @@ def create_destination_file(source_path):
         # Populate 'Value' column based on calculated percentage
         tranches_df['Value'] = tranches_df['Helper_Tranche Value $ as % of Transaction Value USD m'] * tranches_df['Helper_Transaction Value (LC m)']
 
-        # Clean cell contents
-        tranches_df = clean_specific_values(tranches_df)
-        
         # Arrange columns to match the required output for Tranches tab
-        tranches_columns = ['Transaction Upload ID', 'Tranche Upload ID', 'Tranche Primary Type', 'Tranche Secondary Type', 'Tranche Tertiary Type', 'Value', 'Maturity Start Date', 'Maturity End Date', 'Tenor', 'Tranche ESG Type']
+        tranches_columns = [
+            'Transaction Upload ID', 'Tranche Upload ID', 'Tranche Primary Type', 'Tranche Secondary Type', 'Tranche Tertiary Type', 
+            'Value', 'Maturity Start Date', 'Maturity End Date', 'Tenor', 'Tranche ESG Type', 
+            'Helper_Tranche Name', 'Helper_Tranche Value $', 'Helper_Transaction Value (USD m)', 
+            'Helper_Transaction Value (LC m)', 'Helper_Tranche Value $ as % of Transaction Value USD m'
+        ]
         tranches_df = tranches_df.reindex(columns=tranches_columns)
         
         tranches_df.to_excel(writer, sheet_name='Tranches', index=False)
@@ -453,9 +446,6 @@ def create_destination_file(source_path):
         }
         tranche_pricings_df = pd.DataFrame(tranche_pricings_data)
         
-        # Clean cell contents
-        tranche_pricings_df = clean_specific_values(tranche_pricings_df)
-
         # Arrange columns to match the required output for Tranche_Pricings tab
         tranche_pricings_columns = ['Tranche Upload ID', 'Tranche Benchmark', 'Basis Point From', 'Basis Point To', 'Period From', 'Period To', 'Period Duration', 'Comment']
         tranche_pricings_df = tranche_pricings_df.reindex(columns=tranche_pricings_columns)
@@ -516,9 +506,6 @@ def create_destination_file(source_path):
             axis=1
         )
         
-        # Clean cell contents
-        tranche_roles_any_df = clean_specific_values(tranche_roles_any_df)
-
         # Arrange columns to match the required output for Tranche_Roles_Any tab
         tranche_roles_any_columns = [
             'Transaction Upload ID', 'Tranche Upload ID', 'Tranche Role Type', 'Company', 'Fund', 'Value', 'Percentage', 'Comment',
