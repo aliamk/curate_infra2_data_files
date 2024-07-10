@@ -4,6 +4,62 @@ from datetime import datetime
 import os
 import tempfile
 import re
+import openpyxl
+from openpyxl.utils import get_column_letter
+from openpyxl.styles import Alignment
+
+# Replacement dictionary for specific replacements in 'Any Level Sectors'
+replacement_dict_any_level_sectors = {
+    'Renewables': 'Renewable Energy',
+    'Power': 'Conventional Energy',
+    'Social & Defence': 'Social Infrastructure',
+    'Telecoms': 'Digital Infrastructure',
+    'Airports': 'Airport',
+    'Base Metals': 'Metal',
+    'Bridges': 'Bridge',
+    'Car Parks': 'Car Park',
+    'Co Generation': 'Cogeneration Power',
+    'Data Centres': 'Data Centre',
+    'Transmission & Distribution': 'Transmission',
+    'Distribution': 'Water Distribution',
+    'District Heating': 'Heat Network',
+    'Gas-Fired': 'Gas-Fired Power',
+    'Manufacturing': 'Processing',
+    'Maritime Transport': 'Waterway',
+    'Minerals': 'Mineral',
+    'Mobile': 'Tower',
+    'Municipal': 'Municipal Building',
+    'Nuclear': 'Nuclear Power',
+    'Offshore Wind - Fixed': 'Wind (Offshore)',
+    'Offshore Wind - Floating': 'Wind (Offshore)',
+    'Onshore Wind': 'Wind (Onshore)',
+    'Other Power': 'Conventional Energy',
+    'Other Renewables': 'Renewable Energy',
+    'Other Telecoms': 'Digital Infrastructure',
+    'Other Transport': 'Transport',
+    'Ports': 'Port',
+    'Precious Metals': 'Metal',
+    'Roads': 'Road',
+    'Small Hydro': 'Hydro',
+    'Smart Meters': '',
+    'Solar PV - Floating': 'Solar (Floating PV)',
+    'Solar - Floating': 'Solar (Floating PV)',
+    'Solar PV': 'Solar (Land-Based PV)',
+    'Solar Thermal': 'Solar (Thermal)',
+    'Terrestrial': 'Digital Infrastructure',
+    'Transit': 'Light Transport',
+    'Treatment': 'Water Treatment',
+    'Tunnels': 'Tunnel',
+    'Waste-to-Energy': 'Waste to Energy',
+    'Other Oil & Gas': 'Oil & Gas',
+    'IWPP': '',
+    'Other Water': 'Water',
+    'Other Mining': 'Mining',
+    'Other Social & Defence': 'Social Infrastructure',
+    'Oil-fired': 'Oil-Fired Power',
+    'Fire & Rescue': 'Social Infrastructure',
+    'Street Lighting': 'Social Infrastructure'
+}
 
 # Function to read the source file
 def read_source_file(source_path):
@@ -15,32 +71,29 @@ def read_source_file(source_path):
 # Function to create the transaction DataFrame
 def create_transaction_df(df1, df2):
     columns_mapping = {
-        'Transaction ID': 'Realfin INFRA Transaction Upload ID',
+        'Transaction Upload ID': 'Realfin INFRA Transaction Upload ID',
         'Transaction Name': 'Transaction Name',
-        'Asset Class': 'Infrastructure',  # Column C has a fixed value
+        'Transaction Asset Class': 'Infrastructure',  # Column C has a fixed value
         'Transaction Status': 'Transaction Stage',
         'Finance Type': 'Finance Type',
         'Transaction Type': 'Transaction Type',
-        'BlankG': None,  # Column G is blank
-        'BlankH': None,  # Column H is blank
+        'Unknown Asset': None,  # Column G is blank
+        'Underlying Asset Configuration': None,  # Column H is blank
         'Transaction Local Currency': 'Transaction Currency',
         'Transaction Value (Local Currency)': 'Transaction Value (Local Currency m)',
         'Transaction Debt (Local Currency)': 'Transaction Debt (Local Currency m)',
         'Transaction Equity (Local Currency)': 'Transaction Equity (Local Currency m)',
         'Debt/Equity Ratio': 'Debt/Equity Ratio',
-        'BlankN': None,  # Column N is blank
+        'Underlying Number of Assets': None,  # Column N is blank
         'Region - Country': 'Transaction Country/Region',
-        'BlankP': None,  # Column P is blank
-        'BlankQ': None,  # Column Q is blank
+        'Region - State': None,  # Column P is blank
+        'Region - City': None,  # Column Q is blank
         'Any Level Sectors': ['Transaction Sector', 'Transaction Sub-sector'],
         'PPP': 'PPP',
         'Concession Period': 'Concession Period',
         'Contract': 'Contract',
         'SPV': None,  # Column V will be filled later
         'Active': 'True',  # Column W has a fixed value 'True'
-        'BlankX': None,  # Column X is blank
-        'BlankY': None,  # Column Y is blank
-        'BlankZ': None   # Column Z is blank
     }
 
     transaction_data = {}
@@ -59,13 +112,7 @@ def create_transaction_df(df1, df2):
     transaction_df = pd.DataFrame(transaction_data)
     
     spv_mapping = df2.set_index('Realfin INFRA Transaction Upload ID')['SPV'].dropna().to_dict()
-    transaction_df['SPV'] = transaction_df['Transaction ID'].map(spv_mapping)
-
-    column_names = list(transaction_df.columns)
-    for idx in range(len(column_names)):
-        if column_names[idx].startswith('Blank'):
-            column_names[idx] = ''
-    transaction_df.columns = column_names
+    transaction_df['SPV'] = transaction_df['Transaction Upload ID'].map(spv_mapping)
 
     return transaction_df
 
@@ -74,27 +121,6 @@ def clean_transaction_name(transaction_df):
     transaction_df['Transaction Name'] = transaction_df['Transaction Name'].str.strip()  # Remove leading/trailing spaces
     transaction_df['Transaction Name'] = transaction_df['Transaction Name'].apply(lambda x: re.sub(r'\s+', ' ', x))  # Replace multiple spaces with single space
     return transaction_df
-
-# Function to replace words in Any Level Sectors columns
-def replace_words(cell_value):
-    if isinstance(cell_value, str):
-        # Step 1: Replace 'Coal-fired' with 'Xoal-Fired'
-        cell_value = cell_value.replace('Coal-fired', 'Xoal-Fired')
-        
-        # Step 2: Replace 'Coal' with 'Mineral'
-        cell_value = cell_value.replace('Coal', 'Mineral')
-        
-        # Step 3: Replace 'Xoal-Fired' with 'Coal-Fired Power'
-        cell_value = cell_value.replace('Xoal-Fired', 'Coal-Fired Power')
-        
-        # Step 4: Replace 'Biofuels' with 'Biofuels/Biomass'
-        cell_value = cell_value.replace('Biofuels', 'Biofuels/Biomass')
-        
-        # Replace 'Biomass' with 'Biofuels/Biomass' only if 'Biofuels/Biomass' is not already in the cell
-        if 'Biofuels/Biomass' not in cell_value:
-            cell_value = cell_value.replace('Biomass', 'Biofuels/Biomass')
-        
-    return cell_value
 
 # Function to apply replacements based on a dictionary
 def apply_replacements(df, column, replacements):
@@ -106,11 +132,39 @@ def apply_replacements(df, column, replacements):
 
     df[column] = df[column].apply(replace_value)
 
+# Function to apply specific replacements in the 'Any Level Sectors' column
+def apply_specific_replacements(df, column, replacements):
+    apply_replacements(df, column, replacements)
+
 # Function to format date columns
 def format_date_columns(df, date_columns):
     for col in date_columns:
         if col in df.columns:
             df[col] = pd.to_datetime(df[col]).dt.date
+    return df
+
+# Function to autofit columns
+def autofit_columns(writer):
+    for sheetname in writer.sheets:
+        worksheet = writer.sheets[sheetname]
+        for col in worksheet.columns:
+            max_length = 0
+            column = get_column_letter(col[0].column)  # Get the column name
+            for cell in col:
+                try:
+                    if len(str(cell.value)) > max_length:
+                        max_length = len(str(cell.value))
+                except:
+                    pass
+            adjusted_width = (max_length + 2)
+            worksheet.column_dimensions[column].width = adjusted_width
+
+# Function to clean specific values
+def clean_specific_values(df):
+    for col in df.columns:
+        for idx, value in df[col].items():
+            if value in ["0", "nan", "n/a"]:
+                df.at[idx, col] = ""
     return df
 
 # Function to create the destination file
@@ -122,18 +176,45 @@ def create_destination_file(source_path):
     
     # Clean up the Transaction Name column
     transaction_df = clean_transaction_name(transaction_df)
+
+    # Function to replace words in Any Level Sectors columns
+    def replace_words(cell_value):
+        if isinstance(cell_value, str):
+            # Step 1: Replace 'Coal-fired' with 'Xoal-Fired'
+            cell_value = cell_value.replace('Coal-fired', 'Xoal-Fired')
+            
+            # Step 2: Replace 'Coal' with 'Mineral'
+            cell_value = cell_value.replace('Coal', 'Mineral')
+            
+            # Step 3: Replace 'Xoal-Fired' with 'Coal-Fired Power'
+            cell_value = cell_value.replace('Xoal-Fired', 'Coal-Fired Power')
+            
+            # Step 4: Replace 'Biofuels' with 'Biofuels/Biomass'
+            cell_value = cell_value.replace('Biofuels', 'Biofuels/Biomass')
+            
+            # Replace 'Biomass' with 'Biofuels/Biomass' only if 'Biofuels/Biomass' is not already in the cell
+            if 'Biofuels/Biomass' not in cell_value:
+                cell_value = cell_value.replace('Biomass', 'Biofuels/Biomass')
+            
+        return cell_value
     
     # Apply word replacement to 'Any Level Sectors' column in the transaction_df
     transaction_df['Any Level Sectors'] = transaction_df['Any Level Sectors'].apply(replace_words)
+    
+    # Apply specific replacements to 'Any Level Sectors' column in the transaction_df
+    apply_specific_replacements(transaction_df, 'Any Level Sectors', replacement_dict_any_level_sectors)
     
     # Format date columns in transaction_df
     date_columns_transaction = ['Latest Transaction Event Date', 'Financial Close Date']
     transaction_df = format_date_columns(transaction_df, date_columns_transaction)
     
+    # Clean cell contents
+    transaction_df = clean_specific_values(transaction_df)
+    
     # Generate the destination filename with a timestamp
     base, ext = os.path.splitext(source_path)
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    destination_filename = f"{base}_Destination_{timestamp}.xlsx"
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M")
+    destination_filename = f"curated_INFRA2_{timestamp}.xlsx"
     
     with pd.ExcelWriter(destination_filename, engine='openpyxl') as writer:
         # Write transaction data to the 'Transaction' sheet
@@ -216,26 +297,20 @@ def create_destination_file(source_path):
 
         # Apply replacements to 'Event Type'
         replacements_event_type = {
-            'Financial Close Transaction': 'Financial Close',
-            'General Announcement': '',
-            'Risk Alert': '',
-            'Adviser Mandate Won': 'Adviser Appointed',
-            'Tender Launch': 'Tender',
-            'Request for Qualification': 'Request for Qualifications',
-            'Bank Market Approach': 'Financing Sought',
-            'Transaction Announced': 'Announced',
-            'Bank Mandate Won': 'Lenders Appointed',
-            'EoI (Expression of Interest)': 'Expression of Interest',
-            'Offtake Agreement Signed': 'Offtake Agreement',
-            'Concession Signed': 'Concession Agreement',
-            'Financing Signed': 'Financing Agreement',
-            'RoI (Request for Information)': 'Request for Information',
-            'Sponsor withdrawal': ''
+            'Best And Final Offer': 'Best and Final Offer',
+            'Next Milestone': '',
+            'Undisclosed Financial Close': ''
         }
         apply_replacements(full_events_df, 'Event Type', replacements_event_type)
 
+        # Remove rows where 'Event Type' is blank
+        full_events_df = full_events_df[full_events_df['Event Type'] != '']
+
         # Remove duplicate rows
         full_events_df = full_events_df.drop_duplicates()
+
+        # Clean cell contents
+        full_events_df = clean_specific_values(full_events_df)
 
         full_events_df.to_excel(writer, sheet_name='Events', index=False)
 
@@ -243,9 +318,13 @@ def create_destination_file(source_path):
         role_bidders_data = {
             'Transaction Upload ID': df2['Realfin INFRA Transaction Upload ID'],
             'Role Type': df2['Transaction Role'].replace('N/A', pd.NA),
+            'Role Subtype': None,  # Column C remains empty
             'Company': df2['Company Name'].replace('N/A', pd.NA),
+            'Fund': None,  # Column E remains empty
+            'Bidder Status': 'Successful',  # Column F with 'Successful'
             'Client Counterparty': df2['Advise To'].replace('N/A', pd.NA),
-            'Client Company Name': df2['Company Advised (Client Company)'].replace('N/A', pd.NA)
+            'Client Company Name': df2['Company Advised (Client Company)'].replace('N/A', pd.NA),
+            'Fund Name': None  # Column I remains empty
         }
         bidders_any_df = pd.DataFrame(role_bidders_data)
         
@@ -254,16 +333,22 @@ def create_destination_file(source_path):
             'O&M': 'Operations & Maintenance'
         }
         apply_replacements(bidders_any_df, 'Role Type', replacements_role_type)
+
+        # Apply replacements to 'Client Counterparty'
+        replacements_client_counterparty = {
+            'AwardingAuthority': 'Awarding Authority'
+        }
+        apply_replacements(bidders_any_df, 'Client Counterparty', replacements_client_counterparty)
         
         # Remove rows where 'Role Type' is blank, 'N/A', or 'Other'
         bidders_any_df = bidders_any_df.dropna(subset=['Role Type'])
         bidders_any_df = bidders_any_df[~bidders_any_df['Role Type'].str.contains('N/A|^$|Other')]
         
-        # Populate 'Bidder Status' with 'Successful' and place in column F
-        bidders_any_df.insert(5, 'Bidder Status', 'Successful')
-        
+        # Clean cell contents
+        bidders_any_df = clean_specific_values(bidders_any_df)
+
         # Arrange columns to match the required output for Bidders_Any tab
-        bidders_any_columns = ['Transaction Upload ID', 'Role Type', '', 'Company', '', 'Bidder Status', 'Client Counterparty', 'Client Company Name'] + [''] * 18
+        bidders_any_columns = ['Transaction Upload ID', 'Role Type', 'Role Subtype', 'Company', 'Fund', 'Bidder Status', 'Client Counterparty', 'Client Company Name', 'Fund Name']
         bidders_any_df = bidders_any_df.reindex(columns=bidders_any_columns)
         
         bidders_any_df.to_excel(writer, sheet_name='Bidders Any', index=False)
@@ -345,24 +430,34 @@ def create_destination_file(source_path):
 
         # Populate 'Value' column based on calculated percentage
         tranches_df['Value'] = tranches_df['Helper_Tranche Value $ as % of Transaction Value USD m'] * tranches_df['Helper_Transaction Value (LC m)']
+
+        # Clean cell contents
+        tranches_df = clean_specific_values(tranches_df)
         
         # Arrange columns to match the required output for Tranches tab
-        tranches_columns = ['Transaction Upload ID', 'Tranche Upload ID', 'Tranche Primary Type', 'Tranche Secondary Type', 'Tranche Tertiary Type', 'Value', 'Maturity Start Date', 'Maturity End Date', 'Tenor', 'Tranche ESG Type', 'Helper_Tranche Name', 'Helper_Tranche Value $', 'Helper_Transaction Value (USD m)', 'Helper_Transaction Value (LC m)', 'Helper_Tranche Value $ as % of Transaction Value USD m'] + [''] * 10
+        tranches_columns = ['Transaction Upload ID', 'Tranche Upload ID', 'Tranche Primary Type', 'Tranche Secondary Type', 'Tranche Tertiary Type', 'Value', 'Maturity Start Date', 'Maturity End Date', 'Tenor', 'Tranche ESG Type']
         tranches_df = tranches_df.reindex(columns=tranches_columns)
         
         tranches_df.to_excel(writer, sheet_name='Tranches', index=False)
 
         # Populate the Tranche_Pricings tab
         tranche_pricings_data = {
-            'Transaction Upload ID': df2.get('Realfin INFRA Transaction Upload ID'),
+            'Tranche Upload ID': df2.get('Realfin INFRA Tranche Upload ID'),
             'Tranche Benchmark': df2.get('Tranche Loan Reference Rate'),
             'Basis Point From': df2.get('Range From'),
-            'Basis Point To': df2.get('Range To')
+            'Basis Point To': df2.get('Range To'),
+            'Period From': None,  # Column E remains empty
+            'Period To': None,  # Column F remains empty
+            'Period Duration': None,  # Column G remains empty
+            'Comment': None  # Column H remains empty
         }
         tranche_pricings_df = pd.DataFrame(tranche_pricings_data)
         
+        # Clean cell contents
+        tranche_pricings_df = clean_specific_values(tranche_pricings_df)
+
         # Arrange columns to match the required output for Tranche_Pricings tab
-        tranche_pricings_columns = ['Transaction Upload ID', 'Tranche Benchmark', 'Basis Point From', 'Basis Point To'] + [''] * 22
+        tranche_pricings_columns = ['Tranche Upload ID', 'Tranche Benchmark', 'Basis Point From', 'Basis Point To', 'Period From', 'Period To', 'Period Duration', 'Comment']
         tranche_pricings_df = tranche_pricings_df.reindex(columns=tranche_pricings_columns)
         
         tranche_pricings_df.to_excel(writer, sheet_name='Tranche_Pricings', index=False)
@@ -373,11 +468,15 @@ def create_destination_file(source_path):
             'Tranche Upload ID': df2['Realfin INFRA Tranche Upload ID'],
             'Tranche Role Type': df2['Tranche Role'],
             'Company': df2['Company Name'],
-            'Helper_Tranche Primary Type': df2['Tranche Instrument Primary Type'].replace('N/A', pd.NA),
+            'Fund': None,  # Column E remains empty
+            'Value': None,  # Column F remains empty
+            'Percentage': None,  # Column G remains empty
+            'Comment': None,  # Column H remains empty,
+            'Helper_Tranche Primary Type': df2['Tranche Instrument Primary Type'],
             'Helper_Tranche Value $': df2['Tranche Value ($m)'],
             'Helper_Transaction Value (USD m)': df2['Transaction Value (USD m)'],
-            'Helper_Sponsor Equity USD m': df2['Sponsor Equity (USDm)'],
-            'Helper_LT Accredited Value ($m)': df2['LT Accredited Value ($m)']
+            'Helper_LT Accredited Value ($m)': df2['LT Accredited Value ($m)'],
+            'Helper_Sponsor Equity USD m': df2['Sponsor Equity (USDm)']
         }
         
         tranche_roles_any_df = pd.DataFrame(tranche_roles_any_data)
@@ -417,12 +516,14 @@ def create_destination_file(source_path):
             axis=1
         )
         
+        # Clean cell contents
+        tranche_roles_any_df = clean_specific_values(tranche_roles_any_df)
+
         # Arrange columns to match the required output for Tranche_Roles_Any tab
         tranche_roles_any_columns = [
-            'Transaction Upload ID', 'Tranche Upload ID', 'Tranche Role Type', 'Company', '', 'Value', '', '', 'Helper_Tranche Primary Type', 
-            'Helper_Tranche Value $', 'Helper_Transaction Value (USD m)', 'Helper_LT Accredited Value ($m)', 'Helper_Sponsor Equity USD m',
-            'Helper_Tranche_Value LC', 'Helper_Sponsor Equity $ as % of Helper_Tranche Value $', 'Helper_Sponsor Equity LC', 'Helper_LT Accredited Value ($m) as % of Helper_Tranche Value $', 'Helper_Debt Provider Underwriting Value LC'
-        ] + [''] * 10
+            'Transaction Upload ID', 'Tranche Upload ID', 'Tranche Role Type', 'Company', 'Fund', 'Value', 'Percentage', 'Comment',
+            'Helper_Tranche Primary Type', 'Helper_Tranche Value $', 'Helper_Transaction Value (USD m)', 'Helper_LT Accredited Value ($m)', 'Helper_Sponsor Equity USD m'
+        ]
         tranche_roles_any_df = tranche_roles_any_df.reindex(columns=tranche_roles_any_columns)
         
         tranche_roles_any_df.to_excel(writer, sheet_name='Tranche_Roles_Any', index=False)
@@ -439,7 +540,6 @@ def create_destination_file(source_path):
             'Acquisition of ': '',
             'Acquisiition of ': '',
             'Acquisiton of ': '',
-            'Acquisiiton of ': '',
             'Acquisiion of ': '',
             'Acquisistion of ': '',
             'Acqusition of ': ''
@@ -493,6 +593,9 @@ def create_destination_file(source_path):
         
         # Write the updated transaction_df again to reflect changes in specified columns
         transaction_df.to_excel(writer, sheet_name='Transaction', index=False)
+        
+        # Autofit columns for all sheets
+        autofit_columns(writer)
     
     return destination_filename
 
@@ -501,19 +604,21 @@ st.title('Curating INFRA2 data files')
 
 uploaded_file = st.file_uploader("Choose a source file", type=["xlsx"])
 
+# Close the temporary file before further processing ( temp_file_path = temp_file.name )
 if uploaded_file is not None:
     # Save the uploaded file to a temporary directory
     with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as temp_file:
         temp_file.write(uploaded_file.getbuffer())
         temp_file_path = temp_file.name
-        destination_path = None
+    
+    destination_path = None
     
     try:
         with st.spinner("Processing the file..."):
             destination_path = create_destination_file(temp_file_path)
         st.success("File processed successfully!")
-        
-        # Provide a download link for the processed file
+
+        # Provide a download button for the processed file
         with open(destination_path, "rb") as file:
             st.download_button(
                 label="Download Processed File",
@@ -523,11 +628,15 @@ if uploaded_file is not None:
             )
     except Exception as e:
         st.error(f"An error occurred: {e}")
+
     finally:
         # Clean up temporary files
-        if os.path.exists(temp_file_path):
-            os.remove(temp_file_path)
+        if temp_file_path:
+            temp_file.close()
+            if os.path.exists(temp_file_path):
+                os.remove(temp_file_path)
         if destination_path and os.path.exists(destination_path):
             os.remove(destination_path)
+
 else:
     st.info("Please upload an Excel file to start processing.")
