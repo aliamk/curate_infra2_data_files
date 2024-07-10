@@ -172,29 +172,21 @@ def create_destination_file(source_path):
         if isinstance(cell_value, str):
             # Step 1: Replace 'Coal-fired' with 'Xoal-Fired'
             cell_value = cell_value.replace('Coal-fired', 'Xoal-Fired')
-            
             # Step 2: Replace 'Coal' with 'Mineral'
             cell_value = cell_value.replace('Coal', 'Mineral')
-
-            # Step 5: Replace 'Other Power' with 'OtherConventionalEnergy' as a temporary placeholder
+            # Step 3: Replace 'Other Power' with 'OtherConventionalEnergy' as a temporary placeholder
             cell_value = cell_value.replace('Other Power', 'OtherConventionalEnergy')
-
-            # Step 6: Replace 'Power' with 'Conventional Energy' only if it's not part of 'Coal-Fired Power'
+            # Step 4: Replace 'Power' with 'Conventional Energy' only if it's not part of 'Coal-Fired Power'
             cell_value = re.sub(r'\bPower\b', 'Conventional Energy', cell_value)
-
-            # Step 7: Replace the temporary placeholder 'OtherConventionalEnergy' back to 'Conventional Energy'
+            # Step 5: Replace the temporary placeholder 'OtherConventionalEnergy' back to 'Conventional Energy'
             cell_value = cell_value.replace('OtherConventionalEnergy', 'Conventional Energy')
-
-            # Step 3: Replace 'Xoal-Fired' with 'Coal-Fired Power'
+            # Step 6: Replace 'Xoal-Fired' with 'Coal-Fired Power'
             cell_value = cell_value.replace('Xoal-Fired', 'Coal-Fired Power')
-
-            # Step 4: Replace 'Biofuels' with 'Biofuels/Biomass'
+            # Step 7: Replace 'Biofuels' with 'Biofuels/Biomass'
             cell_value = cell_value.replace('Biofuels', 'Biofuels/Biomass')
-
-            # Replace 'Biomass' with 'Biofuels/Biomass' only if 'Biofuels/Biomass' is not already in the cell
+            # Step 8: Replace 'Biomass' with 'Biofuels/Biomass' only if 'Biofuels/Biomass' is not already in the cell
             if 'Biofuels/Biomass' not in cell_value:
                 cell_value = cell_value.replace('Biomass', 'Biofuels/Biomass')
-
 
         return cell_value
     
