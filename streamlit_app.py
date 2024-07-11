@@ -338,7 +338,7 @@ def create_destination_file(source_path):
 
         full_events_df.to_excel(writer, sheet_name='Events', index=False)
 
-        # Populate the Bidders Any tab
+        # Populate the Bidders_Any tab
         role_bidders_data = {
             'Transaction Upload ID': df2['Realfin INFRA Transaction Upload ID'],
             'Role Type': df2['Transaction Role'].replace('N/A', pd.NA),
@@ -372,7 +372,7 @@ def create_destination_file(source_path):
         bidders_any_columns = ['Transaction Upload ID', 'Role Type', 'Role Subtype', 'Company', 'Fund', 'Bidder Status', 'Client Counterparty', 'Client Company Name', 'Fund Name']
         bidders_any_df = bidders_any_df.reindex(columns=bidders_any_columns)
         
-        bidders_any_df.to_excel(writer, sheet_name='Bidders Any', index=False)
+        bidders_any_df.to_excel(writer, sheet_name='Bidders_Any', index=False)
 
         # Populate the Tranches tab
         tranches_data = {
@@ -391,13 +391,24 @@ def create_destination_file(source_path):
         }
         tranches_df = pd.DataFrame(tranches_data)
         
+        # Function to apply replacements with exact match
+        def apply_replacements_exact_match(df, column, replacements):
+            def replace_value(cell_value):
+                if isinstance(cell_value, str):
+                    for old, new in replacements.items():
+                        if cell_value == old:
+                            return new
+                return cell_value
+
+            df[column] = df[column].apply(replace_value)
+
         # Apply replacements to 'Tranche Secondary Type'
         replacements_tranche_secondary_type = {
             'Loans': 'Loan',
             'IFI Government Support': 'Non-Commercial Instrument',
             'Bonds': 'Bond'
         }
-        apply_replacements(tranches_df, 'Tranche Secondary Type', replacements_tranche_secondary_type)
+        apply_replacements_exact_match(tranches_df, 'Tranche Secondary Type', replacements_tranche_secondary_type)
 
         # Apply replacements to 'Tranche Tertiary Type'
         replacements_tranche_tertiary_type = {
@@ -415,7 +426,7 @@ def create_destination_file(source_path):
             'Islamic Loan': '',
             'Islamic Bond': ''
         }
-        apply_replacements(tranches_df, 'Tranche Tertiary Type', replacements_tranche_tertiary_type)
+        apply_replacements_exact_match(tranches_df, 'Tranche Tertiary Type', replacements_tranche_tertiary_type)
         
         # Populate 'Tranche ESG Type' based on 'Helper_Tranche Name'
         esg_mapping_name = {
@@ -476,6 +487,9 @@ def create_destination_file(source_path):
         }
         tranche_pricings_df = pd.DataFrame(tranche_pricings_data)
         
+        # Remove rows where all cells are blank
+        tranche_pricings_df = tranche_pricings_df.dropna(how='all')
+
         # Arrange columns to match the required output for Tranche_Pricings tab
         tranche_pricings_columns = ['Tranche Upload ID', 'Tranche Benchmark', 'Basis Point From', 'Basis Point To', 'Period From', 'Period To', 'Period Duration', 'Comment']
         tranche_pricings_df = tranche_pricings_df.reindex(columns=tranche_pricings_columns)
