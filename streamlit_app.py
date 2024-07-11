@@ -579,7 +579,7 @@ def create_destination_file(source_path):
     return destination_filename
 
 # Streamlit app
-st.title('Curating INFRA2 data files')
+st.title('Curating INFRA 2 data files')
 
 uploaded_file = st.file_uploader("Choose a source file", type=["xlsx"])
 
