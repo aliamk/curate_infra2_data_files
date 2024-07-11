@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
+import pytz
 import os
 import tempfile
 import re
@@ -225,7 +226,9 @@ def create_destination_file(source_path):
     
     # Generate the destination filename with a timestamp
     base, ext = os.path.splitext(source_path)
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M")
+    # Set timezone to London, UK
+    london_tz = pytz.timezone('Europe/London')
+    timestamp = datetime.now(london_tz).strftime("%Y%m%d_%H%M")
     destination_filename = f"curated_INFRA2_{timestamp}.xlsx"
     
     with pd.ExcelWriter(destination_filename, engine='openpyxl') as writer:
