@@ -288,7 +288,22 @@ def create_destination_file(source_path):
         replacements_event_type = {
             'Best And Final Offer': 'Best and Final Offer',
             'Next Milestone': '',
-            'Undisclosed Financial Close': ''
+            'Undisclosed Financial Close': '',
+            'Financial Close Transaction': 'Financial Close',
+            'General Announcement': '',
+            'Risk Alert': '',
+            'Adviser Mandate Won': 'Adviser Appointed',
+            'Tender Launch': 'Tender',
+            'Request for Qualification': 'Request for Qualifications',
+            'Bank Market Approach': 'Financing Sought',
+            'Transaction Announced': 'Announced',
+            'Bank Mandate Won': 'Lenders Appointed',
+            'EoI (Expression of Interest)': 'Expression of Interest',
+            'Offtake Agreement Signed': 'Offtake Agreement',
+            'Concession Signed': 'Concession Agreement',
+            'Financing Signed': 'Financing Agreement',
+            'RoI (Request for Information)': 'Request for Information',
+            'Sponsor withdrawal': ''
         }
         apply_replacements(full_events_df, 'Event Type', replacements_event_type)
 
