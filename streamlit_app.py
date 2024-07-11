@@ -62,7 +62,9 @@ replacement_dict_any_level_sectors = {
     'Software': '',
     'Technology Processing': '',
     'Other Beyond Infrastructure': '',
-    'Beyond Infra': ''
+    'Beyond Infra': '',
+    'Other Social Infrastructure': 'Social Infrastructure',
+    'Other Renewable Energy': 'Renewable Energy'
 }
 
 # Function to read the source file
