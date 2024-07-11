@@ -539,14 +539,16 @@ def create_destination_file(source_path):
         tranche_roles_any_df['Helper_Tranche Value LC'] = tranches_df['Value']
         tranche_roles_any_df = tranche_roles_any_df.reset_index()
 
-        # Ensure 'Helper_LT Accredited Value ($m)' column exists and is properly referenced
-        if 'Helper_LT Accredited Value ($m)' in tranche_roles_any_df.columns:
-            tranche_roles_any_df['Helper_LT Accredited Value ($m) as % of Helper_Tranche Value $'] = tranche_roles_any_df['Helper_LT Accredited Value ($m)'] / tranche_roles_any_df['Helper_Tranche Value LC']
-            tranche_roles_any_df['Helper_Debt Provider Underwriting Value LC'] = tranche_roles_any_df['Helper_LT Accredited Value ($m) as % of Helper_Tranche Value $'] * tranche_roles_any_df['Helper_Tranche Value LC']
-        
-        # Create new columns and populate them with calculated values
+        # Create column O + P in 'Tranche_Roles_Any' tab and populate with calculated values
         tranche_roles_any_df['Helper_Sponsor Equity $ as % of Helper_Tranche Value $'] = tranche_roles_any_df['Helper_Sponsor Equity USD m'] / tranche_roles_any_df['Helper_Tranche Value $']
         tranche_roles_any_df['Helper_Sponsor Equity LC'] = tranche_roles_any_df['Helper_Sponsor Equity $ as % of Helper_Tranche Value $'] * tranche_roles_any_df['Helper_Tranche Value LC']
+
+        # Ensure 'Helper_LT Accredited Value ($m)' column exists and is properly referenced
+        # Create column Q + R in 'Tranche_Roles_Any' tab and populate with calculated values
+        if 'Helper_LT Accredited Value ($m)' in tranche_roles_any_df.columns:
+            tranche_roles_any_df['Helper_LT Accredited Value ($m) as % of Helper_Tranche Value $'] = tranche_roles_any_df['Helper_LT Accredited Value ($m)'] / tranche_roles_any_df['Helper_Tranche Value $']
+            tranche_roles_any_df['Helper_Debt Provider Underwriting Value LC'] = tranche_roles_any_df['Helper_LT Accredited Value ($m) as % of Helper_Tranche Value $'] * tranche_roles_any_df['Helper_Tranche Value LC']
+        
 
         # Populate the 'Value' column based on conditions
         tranche_roles_any_df['Value'] = tranche_roles_any_df.apply(
@@ -557,10 +559,24 @@ def create_destination_file(source_path):
         
         # Arrange columns to match the required output for Tranche_Roles_Any tab
         tranche_roles_any_columns = [
-            'Transaction Upload ID', 'Tranche Upload ID', 'Tranche Role Type', 'Company', 'Fund', 'Value', 'Percentage', 'Comment',
-            'Helper_Tranche Primary Type', 'Helper_Tranche Value $', 'Helper_Transaction Value (USD m)', 'Helper_LT Accredited Value ($m)', 'Helper_Sponsor Equity USD m',
-            'Helper_Tranche Value LC', 'Helper_LT Accredited Value ($m) as % of Helper_Tranche Value $', 'Helper_Debt Provider Underwriting Value LC',
-            'Helper_Sponsor Equity $ as % of Helper_Tranche Value $', 'Helper_Sponsor Equity LC'
+            'Transaction Upload ID', 
+            'Tranche Upload ID', 
+            'Tranche Role Type', 
+            'Company', 
+            'Fund', 
+            'Value', 
+            'Percentage', 
+            'Comment',
+            'Helper_Tranche Primary Type', 
+            'Helper_Tranche Value $', 
+            'Helper_Transaction Value (USD m)', 
+            'Helper_LT Accredited Value ($m)', 
+            'Helper_Sponsor Equity USD m',
+            'Helper_Tranche Value LC', 
+            'Helper_Sponsor Equity $ as % of Helper_Tranche Value $', 
+            'Helper_Debt Provider Underwriting Value LC',
+            'Helper_LT Accredited Value ($m) as % of Helper_Tranche Value $',            
+            'Helper_Sponsor Equity LC'
         ]
         tranche_roles_any_df = tranche_roles_any_df.reindex(columns=tranche_roles_any_columns)
         
