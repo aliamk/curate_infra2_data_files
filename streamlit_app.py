@@ -56,7 +56,13 @@ replacement_dict_any_level_sectors = {
     'Other Social & Defence': 'Social Infrastructure',
     'Oil-fired': 'Oil-Fired Power',
     'Fire & Rescue': 'Social Infrastructure',
-    'Street Lighting': 'Social Infrastructure'
+    'Street Lighting': 'Social Infrastructure',
+    'Other Digital Infrastructure': 'Digital Infrastructure',
+    'Agriculture': '',
+    'Software': '',
+    'Technology Processing': '',
+    'Other Beyond Infrastructure': '',
+    'Beyond Infra': ''
 }
 
 # Function to read the source file
@@ -130,15 +136,30 @@ def apply_replacements(df, column, replacements):
 
     df[column] = df[column].apply(replace_value)
 
-# Function to apply specific replacements in the 'Any Level Sectors' column
+# Function to apply replacements based on a dictionary in a specific order
+def apply_replacements_in_order(df, column, replacements):
+    def replace_value(cell_value, replacements):
+        if isinstance(cell_value, str):
+            for old, new in replacements.items():
+                cell_value = cell_value.replace(old, new)
+        return cell_value
+
+    # Step 1: Replace 'Other Beyond Infrastructure' first
+    df[column] = df[column].apply(lambda x: replace_value(x, {'Other Beyond Infrastructure': replacements['Other Beyond Infrastructure']}))
+
+    # Step 2: Replace the rest, including 'Beyond Infra'
+    replacements.pop('Other Beyond Infrastructure')  # Remove 'Other Beyond Infrastructure' from the dictionary
+    df[column] = df[column].apply(lambda x: replace_value(x, replacements))
+
+# Apply specific replacements in 'Any Level Sectors' column with order consideration
 def apply_specific_replacements(df, column, replacements):
-    apply_replacements(df, column, replacements)
+    apply_replacements_in_order(df, column, replacements)
 
 # Function to format date columns
 def format_date_columns(df, date_columns):
     for col in date_columns:
-        if col in df.columns:
-            df[col] = pd.to_datetime(df[col]).dt.date
+        if (col in df.columns) and (df[col].dtype == 'object'):
+            df[col] = pd.to_datetime(df[col], errors='coerce').dt.date
     return df
 
 # Function to autofit columns
