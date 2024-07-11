@@ -8,6 +8,7 @@ import re
 import openpyxl
 from openpyxl.utils import get_column_letter
 from openpyxl.styles import Alignment
+import numpy as np
 
 # Replacement dictionary for specific replacements in 'Any Level Sectors'
 replacement_dict_any_level_sectors = {
@@ -461,7 +462,12 @@ def create_destination_file(source_path):
         tranches_df = format_date_columns(tranches_df, date_columns_tranches)
         
         # Calculate 'Helper_Tranche Value $ as % of Transaction Value USD m'
-        tranches_df['Helper_Tranche Value $ as % of Transaction Value USD m'] = tranches_df['Helper_Tranche Value $'] / tranches_df['Helper_Transaction Value (USD m)']
+        tranches_df['Helper_Tranche Value $ as % of Transaction Value USD m'] = np.where(
+            tranches_df['Helper_Transaction Value (USD m)'].isna() | (tranches_df['Helper_Transaction Value (USD m)'] == 0),
+            np.nan,
+            tranches_df['Helper_Tranche Value $'] / tranches_df['Helper_Transaction Value (USD m)']
+        )
+
 
         # Populate 'Value' column based on calculated percentage
         tranches_df['Value'] = tranches_df['Helper_Tranche Value $ as % of Transaction Value USD m'] * tranches_df['Helper_Transaction Value (LC m)']
@@ -543,13 +549,22 @@ def create_destination_file(source_path):
         tranche_roles_any_df = tranche_roles_any_df.reset_index()
 
         # Create column O + P in 'Tranche_Roles_Any' tab and populate with calculated values
-        tranche_roles_any_df['Helper_Sponsor Equity $ as % of Helper_Tranche Value $'] = tranche_roles_any_df['Helper_Sponsor Equity USD m'] / tranche_roles_any_df['Helper_Tranche Value $']
+        tranche_roles_any_df['Helper_Sponsor Equity $ as % of Helper_Tranche Value $'] = np.where(
+            tranche_roles_any_df['Helper_Tranche Value $'].isna() | (tranche_roles_any_df['Helper_Tranche Value $'] == 0),
+            np.nan,
+            tranche_roles_any_df['Helper_Sponsor Equity USD m'] / tranche_roles_any_df['Helper_Tranche Value $']
+        )
+
         tranche_roles_any_df['Helper_Sponsor Equity LC'] = tranche_roles_any_df['Helper_Sponsor Equity $ as % of Helper_Tranche Value $'] * tranche_roles_any_df['Helper_Tranche Value LC']
 
         # Ensure 'Helper_LT Accredited Value ($m)' column exists and is properly referenced
         # Create column Q + R in 'Tranche_Roles_Any' tab and populate with calculated values
         if 'Helper_LT Accredited Value ($m)' in tranche_roles_any_df.columns:
-            tranche_roles_any_df['Helper_LT Accredited Value ($m) as % of Helper_Tranche Value $'] = tranche_roles_any_df['Helper_LT Accredited Value ($m)'] / tranche_roles_any_df['Helper_Tranche Value $']
+            tranche_roles_any_df['Helper_LT Accredited Value ($m) as % of Helper_Tranche Value $'] = np.where(
+                tranche_roles_any_df['Helper_Tranche Value $'].isna() | (tranche_roles_any_df['Helper_Tranche Value $'] == 0),
+                np.nan,
+                tranche_roles_any_df['Helper_LT Accredited Value ($m)'] / tranche_roles_any_df['Helper_Tranche Value $']
+            )
             tranche_roles_any_df['Helper_Debt Provider Underwriting Value LC'] = tranche_roles_any_df['Helper_LT Accredited Value ($m) as % of Helper_Tranche Value $'] * tranche_roles_any_df['Helper_Tranche Value LC']
         
 
