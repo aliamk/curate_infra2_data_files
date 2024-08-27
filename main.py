@@ -645,11 +645,12 @@ def create_destination_file(source_path):
             'Additional Facility': 'Additional Financing'
         }
         apply_replacements(transaction_df, 'Transaction Type', replacements_transaction_type)
-        
+      
         replacements_region_country = {
             'China - Chinese Taipei': 'Taiwan',
             'China - Hong Kong (SAR)': 'Hong Kong',
             'China - Mainland': 'China',
+            'China - Macau': 'Macau',
             'Cook Islands': '',
             'Fiji Islands': '',
             'Marshall Islands': '',
@@ -660,7 +661,8 @@ def create_destination_file(source_path):
             'Hong Kong (SAR)': 'Hong Kong',
             'Mainland': 'China',
             'Chinese Taipei': 'Taiwan',
-            'Macau (SAR)': 'Macau'
+            'Macau (SAR)': 'Macau',
+            'North Macedonia': 'Republic of North Macedonia'
         }
         apply_replacements(transaction_df, 'Region - Country', replacements_region_country)
         
