@@ -193,6 +193,12 @@ def create_destination_file(source_path):
     transaction_df = clean_transaction_name(transaction_df)
 
     # Function to replace words in Any Level Sectors columns
+    import re
+
+    # Function to replace words in Any Level Sectors columns
+    import re
+
+    # Function to replace words in Any Level Sectors columns
     def replace_words(cell_value):
         if isinstance(cell_value, str):
             # Step 1: Replace 'Coal-fired' with 'Xoal-Fired'
@@ -207,13 +213,13 @@ def create_destination_file(source_path):
             cell_value = cell_value.replace('OtherConventionalEnergy', 'Conventional Energy')
             # Step 6: Replace 'Xoal-Fired' with 'Coal-Fired Power'
             cell_value = cell_value.replace('Xoal-Fired', 'Coal-Fired Power')
-            # Step 7: Replace 'Biofuels' with 'Biofuels/Biomass'
+            # Step 7: Replace 'Biofuels' with 'Biofuels/Biomass' but only if 'Biofuels/Biomass' isn't already there
             cell_value = cell_value.replace('Biofuels', 'Biofuels/Biomass')
-            # Step 8: Replace 'Biomass' with 'Biofuels/Biomass' only if 'Biofuels/Biomass' is not already in the cell
-            if 'Biofuels/Biomass' not in cell_value:
-                cell_value = cell_value.replace('Biomass', 'Biofuels/Biomass')
+            # Step 8: Replace 'Biomass' with 'Biofuels/Biomass' only if 'Biofuels/' doesn't precede it
+            cell_value = re.sub(r'(?<!Biofuels/)Biomass', 'Biofuels/Biomass', cell_value)
 
         return cell_value
+
     
     # Apply word replacement to 'Any Level Sectors' column in the transaction_df
     transaction_df['Any Level Sectors'] = transaction_df['Any Level Sectors'].apply(replace_words)
